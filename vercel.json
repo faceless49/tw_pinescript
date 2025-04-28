@@ -1,11 +1,23 @@
 {
   "version": 2,
-  "name": "tw pinescript",
   "builds": [
-    { "src": "index.js", "use": "@vercel/node" }
+    {
+      "src": "index.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
+    }
   ],
   "routes": [
-    { "src": "/generate-pine-script", "dest": "index.js" },
-    { "src": "/", "dest": "index.html" }
+    {
+      "src": "/generate-pine-script",
+      "dest": "index.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "public/$1"
+    }
   ]
 }
