@@ -3,10 +3,11 @@ const multer = require('multer');
 const XLSX = require('xlsx');
 const fs = require('fs');
 const app = express();
-const upload = multer({ dest: 'uploads/' }); // Временная папка для файлов
+const upload = multer({ dest: '/tmp/' }); // Временная папка для файлов
 app.use(express.static('public'));
 // Создаем POST-endpoint для загрузки файла
 app.post('/generate-pine-script', upload.single('file'), (req, res) => {
+  console.log('Получен файл', req.file);
   if (!req.file) {
     return res.status(400).send('Файл не загружен.');
   }
@@ -93,7 +94,7 @@ if barstate.islast and not is_drawn
   // Отправка Pine Script клиенту
   res.send(pineScript);
 });
-
+module.exports = app;
 // Запуск сервера
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
