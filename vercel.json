@@ -5,6 +5,7 @@
     { "src": "index.js", "use": "@vercel/node" }
   ],
   "routes": [
-    { "src": "/generate-pine-script", "dest": "index.js" }
+    { "src": "/generate-pine-script", "dest": "index.js" },
+    { "src": "/", "dest": "index.html" }
   ]
 }
