@@ -1,0 +1,25 @@
+{
+  "name": "tw_pinescript",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/faceless49/tw_pinescript.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/faceless49/tw_pinescript/issues"
+  },
+  "homepage": "https://github.com/faceless49/tw_pinescript#readme",
+  "description": "",
+  "dependencies": {
+    "express": "^5.1.0",
+    "multer": "^1.4.5-lts.2",
+    "xlsx": "^0.18.5"
+  }
+}
