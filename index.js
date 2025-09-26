@@ -1,13 +1,12 @@
 // api/generate-pine-script.js
+// index.js
 const express = require('express');
 const multer = require('multer');
 const XLSX = require('xlsx');
 
 const app = express();
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 }, // до 25 МБ
-});
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
+
 
 // ===== Хелперы =====
 function parseLevel(val) {
