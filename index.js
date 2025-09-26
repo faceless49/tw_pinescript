@@ -1,4 +1,3 @@
-// api/generate-pine-script.js
 // index.js
 const express = require('express');
 const multer = require('multer');
@@ -6,7 +5,6 @@ const XLSX = require('xlsx');
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
-
 
 // ===== Хелперы =====
 function parseLevel(val) {
@@ -21,15 +19,15 @@ function parseLevel(val) {
   if (typeof val === 'number') return Number.isFinite(val) ? val : 0.0;
   return 0.0;
 }
-
 function mapExcelTickerToPine(excelTicker) {
   if (!excelTicker) return excelTicker;
   const map = { USDRUBF: 'USDRUB.P', CNYRUBF: 'CNYRUB.P', GLDRUBF: 'GLDRUB.P' };
   return map[excelTicker] ?? excelTicker;
 }
 
-// GET на /api/generate-pine-script — опционально: быстрая форма теста в браузере
-app.get('/', (_req, res) => {
+// ===== Простая форма (GET) на всех ожидаемых путях =====
+const GET_PATHS = ['/', '/generate-pine-script', '/api/generate-pine-script'];
+app.get(GET_PATHS, (_req, res) => {
   res.set('Content-Type', 'text/html; charset=utf-8');
   res.send(`
     <h1>Excel → Pine</h1>
@@ -37,11 +35,13 @@ app.get('/', (_req, res) => {
       <input type="file" name="file" accept=".xlsx,.xls" required />
       <button type="submit">Сгенерировать Pine</button>
     </form>
+    <p>Альтернативный POST-роут: <code>/api/generate-pine-script</code></p>
   `);
 });
 
-// POST /api/generate-pine-script — основной эндпоинт
-app.post('/', upload.single('file'), (req, res) => {
+// ===== Основной обработчик (POST) на всех ожидаемых путях =====
+const POST_PATHS = ['/', '/generate-pine-script', '/api/generate-pine-script'];
+app.post(POST_PATHS, upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).send('Файл не загружен (ожидаю поле "file").');
 
   let workbook;
@@ -137,7 +137,7 @@ entry_series   = entry_level  > 0 ? entry_level  : na
 plot(goal1_series,   title="Цель 1", color=color.red,    linewidth=2, style=plot.style_linebr, trackprice=true, show_last=1)
 plot(goal2_series,   title="Цель 2", color=color.red,    linewidth=2, style=plot.style_linebr, trackprice=true, show_last=1)
 plot(stop_series,    title="Стоп",   color=color.orange, linewidth=2, style=plot.style_linebr, trackprice=true, show_last=1)
-plot(cancel_series,  title="Отмена", color=color.gray,   linewidth=2, style=plot.style_linebr, trackprice=true, show_last=1)
+plot(cancel_series,  title="Отмена", color=color.gray,   color=color.gray, linewidth=2, style=plot.style_linebr, trackprice=true, show_last=1)
 plot(entry_series,   title="Вход",   color=color.green,  linewidth=2, style=plot.style_linebr, trackprice=true, show_last=1)
 
 futureMs = int(timeframe.in_seconds()) * 1000 * labelsOffsetBars
@@ -198,9 +198,8 @@ alertcondition(goal2_reached, "Goal 2 Reached", "Цена достигла Це�
   // Отдаём файл на скачивание
   res.set('Content-Type', 'text/plain; charset=utf-8');
   res.set('Content-Disposition', 'attachment; filename="generated_pine_script.pine"');
-  return res.status(200).send(pineScript);
+  res.status(200).send(pineScript);
 });
-// ВАЖНО: без app.listen в Vercel
+
+// ===== Экспорт для Vercel (без app.listen) =====
 module.exports = (req, res) => app(req, res);
-
-
