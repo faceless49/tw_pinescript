@@ -201,7 +201,6 @@ alertcondition(goal2_reached, "Goal 2 Reached", "Цена достигла Це�
   res.set('Content-Disposition', 'attachment; filename="generated_pine_script.pine"');
   return res.status(200).send(pineScript);
 });
-
 // ВАЖНО: без app.listen в Vercel
 module.exports = (req, res) => app(req, res);
 
