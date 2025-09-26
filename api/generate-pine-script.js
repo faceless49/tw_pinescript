@@ -4,8 +4,6 @@ const multer = require('multer');
 const XLSX = require('xlsx');
 
 const app = express();
-
-// Парсим файл в памяти (без /tmp)
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 25 * 1024 * 1024 }, // до 25 МБ
@@ -27,22 +25,25 @@ function parseLevel(val) {
 
 function mapExcelTickerToPine(excelTicker) {
   if (!excelTicker) return excelTicker;
-  const map = {
-    USDRUBF: 'USDRUB.P',
-    CNYRUBF: 'CNYRUB.P',
-    GLDRUBF: 'GLDRUB.P',
-  };
+  const map = { USDRUBF: 'USDRUB.P', CNYRUBF: 'CNYRUB.P', GLDRUBF: 'GLDRUB.P' };
   return map[excelTicker] ?? excelTicker;
 }
 
-// Опционально: статика из /public (для формы загрузки)
-app.use(express.static('public'));
+// GET на /api/generate-pine-script — опционально: быстрая форма теста в браузере
+app.get('/', (_req, res) => {
+  res.set('Content-Type', 'text/html; charset=utf-8');
+  res.send(`
+    <h1>Excel → Pine</h1>
+    <form action="/api/generate-pine-script" method="post" enctype="multipart/form-data">
+      <input type="file" name="file" accept=".xlsx,.xls" required />
+      <button type="submit">Сгенерировать Pine</button>
+    </form>
+  `);
+});
 
-// POST /api/generate-pine-script
+// POST /api/generate-pine-script — основной эндпоинт
 app.post('/', upload.single('file'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).send('Файл не загружен (ожидаю поле "file").');
-  }
+  if (!req.file) return res.status(400).send('Файл не загружен (ожидаю поле "file").');
 
   let workbook;
   try {
@@ -51,37 +52,31 @@ app.post('/', upload.single('file'), (req, res) => {
     return res.status(400).send('Не удалось прочитать Excel: ' + e.message);
   }
 
-  // ===== Шапка Pine: объявляем все переменные, которые будут использоваться ниже =====
+  // ===== Шапка Pine =====
   let pineScript = `//@version=6
 indicator("Multi-Ticker Levels (Goals/Stop/Cancel/Entry)", overlay=true, scale=scale.right)
 
-// Тикер текущего графика без префикса биржи
 var string raw_ticker = syminfo.ticker
 var string ticker     = str.replace(syminfo.ticker, "MOEX:", "")
 
-// Уровни
 var float goal1        = 0.0
 var float goal2        = 0.0
 var float stop_level   = 0.0
 var float cancel_level = 0.0
 var float entry_level  = 0.0
 
-// Флаг одноразовой отрисовки линий
 var bool is_drawn = false
 
-// Настройки визуализации
 showInlineLabels   = input.bool(false, "Показывать лейблы на графике (в дополнение к подписи на шкале)")
 labelsOffsetBars   = input.int(15, "Смещение лейблов вправо (в барах)", minval=0, maxval=500)
 labelsSizeStr      = input.string("large", "Размер лейблов", options=["tiny","small","normal","large","huge"])
 
-// Маппинг строкового инпута в константу размера
 label_size = size.normal
 label_size := labelsSizeStr == "tiny"   ? size.tiny   :
               labelsSizeStr == "small"  ? size.small  :
               labelsSizeStr == "normal" ? size.normal :
               labelsSizeStr == "large"  ? size.large  : size.huge
 
-// Держатели для лейблов
 var label lbl_goal1   = na
 var label lbl_goal2   = na
 var label lbl_stop    = na
@@ -99,8 +94,8 @@ var label lbl_entry   = na
       rows.forEach((row) => {
         const tRaw = row['Тикер'];
         if (!tRaw) return;
-
         const t = mapExcelTickerToPine(String(tRaw).trim());
+
         const g1 = parseLevel(row['Цель 1']);
         const g2 = parseLevel(row['Цель 2']);
         const s  = parseLevel(row['Стоп']);
@@ -118,30 +113,22 @@ if ticker == "${t}"
       });
     });
 
-  // ===== Хвост Pine (линии, подписи, лейблы, алерты) =====
+  // ===== Хвост Pine =====
   pineScript += `
 
-// ---- ЛИНИИ: рисуем один раз на последнем баре ----
 if barstate.islast and not is_drawn
     is_drawn := true
-
     if goal1 > 0
         line.new(bar_index[200], goal1, bar_index, goal1, extend=extend.right, color=color.red, style=line.style_solid, width=2)
-
     if goal2 > 0
         line.new(bar_index[200], goal2, bar_index, goal2, extend=extend.right, color=color.red, style=line.style_dotted, width=2)
-
     if stop_level > 0
         line.new(bar_index[200], stop_level, bar_index, stop_level, extend=extend.right, color=color.orange, style=line.style_solid, width=2)
-
     if cancel_level > 0
         line.new(bar_index[200], cancel_level, bar_index, cancel_level, extend=extend.right, color=color.gray, style=line.style_dashed, width=2)
-
     if entry_level > 0
         line.new(bar_index[200], entry_level, bar_index, entry_level, extend=extend.right, color=color.green, style=line.style_solid, width=2)
 
-
-// ---- ПОДПИСИ НА ШКАЛЕ ЦЕНЫ (через plot + trackprice) ----
 goal1_series   = goal1        > 0 ? goal1        : na
 goal2_series   = goal2        > 0 ? goal2        : na
 stop_series    = stop_level   > 0 ? stop_level   : na
@@ -154,8 +141,6 @@ plot(stop_series,    title="Стоп",   color=color.orange, linewidth=2, style=
 plot(cancel_series,  title="Отмена", color=color.gray,   linewidth=2, style=plot.style_linebr, trackprice=true, show_last=1)
 plot(entry_series,   title="Вход",   color=color.green,  linewidth=2, style=plot.style_linebr, trackprice=true, show_last=1)
 
-
-// ---- ОПЦИОНАЛЬНЫЕ ЛЕЙБЛЫ У ПРАВОГО КРАЯ ГРАФИКА ----
 futureMs = int(timeframe.in_seconds()) * 1000 * labelsOffsetBars
 xRight   = timenow + futureMs
 
@@ -188,8 +173,6 @@ if true
         if not na(entry_series)
             lbl_entry := label.new(x=xRight, y=entry_level, xloc=xloc.bar_time, style=label.style_label_right, text="Вход", color=color.new(color.green, 20), textcolor=color.white, size=label_size)
 
-
-// ---- АЛЕРТЫ ----
 crossUp(src, level)   => ta.crossover(src, level)
 crossDown(src, level) => ta.crossunder(src, level)
 
@@ -213,10 +196,11 @@ alertcondition(goal1_reached, "Goal 1 Reached", "Цена достигла Це�
 alertcondition(goal2_reached, "Goal 2 Reached", "Цена достигла Цель 2")
 `;
 
+  // Отдаём файл на скачивание
   res.set('Content-Type', 'text/plain; charset=utf-8');
   res.set('Content-Disposition', 'attachment; filename="generated_pine_script.pine"');
   return res.status(200).send(pineScript);
 });
 
-// ВАЖНО: в Vercel serverless НЕЛЬЗЯ делать app.listen(...)
+// ВАЖНО: без app.listen в Vercel
 module.exports = app;
