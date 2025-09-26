@@ -195,10 +195,10 @@ alertcondition(goal1_reached, "Goal 1 Reached", "Цена достигла Це�
 alertcondition(goal2_reached, "Goal 2 Reached", "Цена достигла Цель 2")
 `;
 
-  // Отдаём файл на скачивание
   res.set('Content-Type', 'text/plain; charset=utf-8');
-  res.set('Content-Disposition', 'attachment; filename="generated_pine_script.pine"');
-  res.status(200).send(pineScript);
+  // СКАЧИВАНИЕ, если заходят не через JS:
+  res.set('Content-Disposition', 'attachment; filename="generated_pine_script.txt"');
+  return res.status(200).send(pineScript);
 });
 
 // ===== Экспорт для Vercel (без app.listen) =====
