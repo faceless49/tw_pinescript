@@ -137,7 +137,7 @@ entry_series   = entry_level  > 0 ? entry_level  : na
 plot(goal1_series,   title="Цель 1", color=color.red,    linewidth=2, style=plot.style_linebr, trackprice=true, show_last=1)
 plot(goal2_series,   title="Цель 2", color=color.red,    linewidth=2, style=plot.style_linebr, trackprice=true, show_last=1)
 plot(stop_series,    title="Стоп",   color=color.orange, linewidth=2, style=plot.style_linebr, trackprice=true, show_last=1)
-plot(cancel_series,  title="Отмена", color=color.gray,   color=color.gray, linewidth=2, style=plot.style_linebr, trackprice=true, show_last=1)
+plot(cancel_series,  title="Отмена", color=color.gray,   linewidth=2, style=plot.style_linebr, trackprice=true, show_last=1)
 plot(entry_series,   title="Вход",   color=color.green,  linewidth=2, style=plot.style_linebr, trackprice=true, show_last=1)
 
 futureMs = int(timeframe.in_seconds()) * 1000 * labelsOffsetBars
