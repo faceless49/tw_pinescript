@@ -203,4 +203,6 @@ alertcondition(goal2_reached, "Goal 2 Reached", "Цена достигла Це�
 });
 
 // ВАЖНО: без app.listen в Vercel
-module.exports = app;
+module.exports = (req, res) => app(req, res);
+
+
