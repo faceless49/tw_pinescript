@@ -34,7 +34,7 @@ app.get('/', (_req, res) => {
   res.set('Content-Type', 'text/html; charset=utf-8');
   res.send(`
     <h1>Excel → Pine</h1>
-    <form action="/api/generate-pine-script" method="post" enctype="multipart/form-data">
+    <form action="/generate-pine-script" method="post" enctype="multipart/form-data">
       <input type="file" name="file" accept=".xlsx,.xls" required />
       <button type="submit">Сгенерировать Pine</button>
     </form>
