@@ -107,36 +107,47 @@ stop_series    = stop_level   > 0 ? stop_level   : na
 cancel_series  = cancel_level > 0 ? cancel_level : na
 entry_series   = entry_level  > 0 ? entry_level  : na
 
-// ---- ЛИНИИ уровней (НИКАКОГО overlay-объекта) ----
+// ---- ЛИНИИ уровней на общей ценовой шкале (никакого overlay-объекта) ----
 plot(goal1_series,   title="Цель 1", color=color.red,    linewidth=2, style=plot.style_line,     trackprice=true)
 plot(goal2_series,   title="Цель 2", color=color.red,    linewidth=2, style=plot.style_line,     trackprice=true)
 plot(stop_series,    title="Стоп",   color=color.orange, linewidth=2, style=plot.style_line,     trackprice=true)
 plot(cancel_series,  title="Отмена", color=color.gray,   linewidth=2, style=plot.style_line,     trackprice=true)
 plot(entry_series,   title="Вход",   color=color.green,  linewidth=2, style=plot.style_stepline, trackprice=true)
 
-// ---- Подписи у последнего бара (возвращаем лейблы) ----
+// ---- Текстовые подписи у последнего бара (через label.new, без shape) ----
 showText = input.bool(true, "Показывать подписи (Вход/Стоп/Отмена/Цели) у последнего бара")
 
-plotshape(showText and barstate.islast and not na(goal1_series),
-     title="Цель 1 метка", text="Цель 1", style=shape.label_left,
-     location=location.absolute, y=goal1, color=color.red, textcolor=color.white, size=size.tiny)
+// держатели лейблов
+var label lbl_goal1   = na
+var label lbl_goal2   = na
+var label lbl_stop    = na
+var label lbl_cancel  = na
+var label lbl_entry   = na
 
-plotshape(showText and barstate.islast and not na(goal2_series),
-     title="Цель 2 метка", text="Цель 2", style=shape.label_left,
-     location=location.absolute, y=goal2, color=color.red, textcolor=color.white, size=size.tiny)
+if barstate.islast
+    // почистить предыдущие
+    if not na(lbl_goal1)
+        label.delete(lbl_goal1), lbl_goal1 := na
+    if not na(lbl_goal2)
+        label.delete(lbl_goal2), lbl_goal2 := na
+    if not na(lbl_stop)
+        label.delete(lbl_stop),  lbl_stop  := na
+    if not na(lbl_cancel)
+        label.delete(lbl_cancel),lbl_cancel:= na
+    if not na(lbl_entry)
+        label.delete(lbl_entry), lbl_entry := na
 
-plotshape(showText and barstate.islast and not na(stop_series),
-     title="Стоп метка", text="Стоп", style=shape.label_left,
-     location=location.absolute, y=stop_level, color=color.orange, textcolor=color.white, size=size.tiny)
-
-plotshape(showText and barstate.islast and not na(cancel_series),
-     title="Отмена метка", text="Отмена", style=shape.label_left,
-     location=location.absolute, y=cancel_level, color=color.gray, textcolor=color.white, size=size.tiny)
-
-plotshape(showText and barstate.islast and not na(entry_series),
-     title="Вход метка", text="Вход", style=shape.label_left,
-     location=location.absolute, y=entry_level, color=color.green, textcolor=color.white, size=size.tiny)
-
+    if showText
+        if not na(goal1_series)
+            lbl_goal1  := label.new(bar_index, goal1,  "Цель 1",  style=label.style_label_left,  textcolor=color.white, color=color.new(color.red,    20), size=size.tiny)
+        if not na(goal2_series)
+            lbl_goal2  := label.new(bar_index, goal2,  "Цель 2",  style=label.style_label_left,  textcolor=color.white, color=color.new(color.red,    40), size=size.tiny)
+        if not na(stop_series)
+            lbl_stop   := label.new(bar_index, stop_level, "Стоп",   style=label.style_label_left,  textcolor=color.white, color=color.new(color.orange, 20), size=size.tiny)
+        if not na(cancel_series)
+            lbl_cancel := label.new(bar_index, cancel_level,"Отмена", style=label.style_label_left,  textcolor=color.white, color=color.new(color.gray,   20), size=size.tiny)
+        if not na(entry_series)
+            lbl_entry  := label.new(bar_index, entry_level, "Вход",  style=label.style_label_left,  textcolor=color.white, color=color.new(color.green,  20), size=size.tiny)
 `;
 
   res.set('Content-Type', 'text/plain; charset=utf-8');
