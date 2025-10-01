@@ -52,7 +52,7 @@ app.post(POST_PATHS, upload.single('file'), (req, res) => {
   }
 
   // ===== Шапка Pine =====
-  // Важно: scale=scale.none — индикатор НЕ создаёт вторую ценовую шкалу.
+  // scale=scale.none — индикатор НЕ создаёт вторую ценовую шкалу
   let pineScript = `//@version=6
 indicator("Multi-Ticker Levels (Goals/Stop/Cancel/Entry)", overlay=true, scale=scale.none)
 
@@ -60,15 +60,12 @@ indicator("Multi-Ticker Levels (Goals/Stop/Cancel/Entry)", overlay=true, scale=s
 var string raw_ticker = syminfo.ticker
 var string ticker     = str.replace(syminfo.ticker, "MOEX:", "")
 
-// Уровни
+// Уровни (series float)
 var float goal1        = 0.0
 var float goal2        = 0.0
 var float stop_level   = 0.0
 var float cancel_level = 0.0
 var float entry_level  = 0.0
-
-// Флаг одноразовой отрисовки линий
-var bool is_drawn = false
 `;
 
   // ===== Генерация условий из всех листов (кроме "Легенда") =====
@@ -100,36 +97,26 @@ if ticker == "${t}"
       });
     });
 
-  // ===== Хвост Pine: фиксированные лучи + плашки на правой шкале (без второй шкалы) =====
+  // ===== Хвост Pine: ТОЛЬКО plot-линии (привязаны к цене) + плашки =====
+  // Без line.new и без label.new — ничего «поверх графика» не рисуется.
   pineScript += `
 
-// ---- Горизонтальные лучи: рисуем один раз ----
-if barstate.islast and not is_drawn
-    is_drawn := true
-    if goal1 > 0
-        line.new(bar_index[200], goal1, bar_index, goal1, extend=extend.right, color=color.red,    style=line.style_solid,  width=2)
-    if goal2 > 0
-        line.new(bar_index[200], goal2, bar_index, goal2, extend=extend.right, color=color.red,    style=line.style_dotted, width=2)
-    if stop_level > 0
-        line.new(bar_index[200], stop_level, bar_index, stop_level, extend=extend.right, color=color.orange, style=line.style_solid,  width=2)
-    if cancel_level > 0
-        line.new(bar_index[200], cancel_level, bar_index, cancel_level, extend=extend.right, color=color.gray,   style=line.style_dashed, width=2)
-    if entry_level > 0
-        line.new(bar_index[200], entry_level, bar_index, entry_level, extend=extend.right, color=color.green,  style=line.style_solid,  width=2)
-
-// ---- Плашки на правой ценовой шкале (trackprice) ----
-// Серии только на последнем баре: линия истории не рисуется, видна только плашка на шкале
+// ---- Серии уровней ----
 goal1_series   = goal1        > 0 ? goal1        : na
 goal2_series   = goal2        > 0 ? goal2        : na
 stop_series    = stop_level   > 0 ? stop_level   : na
 cancel_series  = cancel_level > 0 ? cancel_level : na
 entry_series   = entry_level  > 0 ? entry_level  : na
 
-plot(goal1_series,   title="Цель 1", color=color.red,    linewidth=1, style=plot.style_linebr, trackprice=true, show_last=1)
-plot(goal2_series,   title="Цель 2", color=color.red,    linewidth=1, style=plot.style_linebr, trackprice=true, show_last=1)
-plot(stop_series,    title="Стоп",   color=color.orange, linewidth=1, style=plot.style_linebr, trackprice=true, show_last=1)
-plot(cancel_series,  title="Отмена", color=color.gray,   linewidth=1, style=plot.style_linebr, trackprice=true, show_last=1)
-plot(entry_series,   title="Вход",   color=color.green,  linewidth=1, style=plot.style_linebr, trackprice=true, show_last=1)
+// ---- Отрисовка линий, привязанных к цене ----
+// Это НЕ объекты-оверлей, а именно "ценовые" линии индикатора.
+// trackprice=true даёт плашки на правой шкале.
+// show_last=bar_index — рисовать на всей видимой истории (по умолчанию plot это и делает).
+plot(goal1_series,   title="Цель 1", color=color.red,    linewidth=2, trackprice=true)
+plot(goal2_series,   title="Цель 2", color=color.red,    linewidth=2, trackprice=true)
+plot(stop_series,    title="Стоп",   color=color.orange, linewidth=2, trackprice=true)
+plot(cancel_series,  title="Отмена", color=color.gray,   linewidth=2, trackprice=true)
+plot(entry_series,   title="Вход",   color=color.green,  linewidth=2, trackprice=true)
 `;
 
   res.set('Content-Type', 'text/plain; charset=utf-8');
