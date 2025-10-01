@@ -54,7 +54,7 @@ app.post(POST_PATHS, upload.single('file'), (req, res) => {
   // ===== Шапка Pine =====
   // scale=scale.none — индикатор НЕ создаёт вторую ценовую шкалу
   let pineScript = `//@version=6
-indicator("Multi-Ticker Levels (Goals/Stop/Cancel/Entry)", overlay=true, scale=scale.none)
+indicator("Multi-Ticker Levels (Goals/Stop/Cancel/Entry)", overlay=true)
 
 // Тикер текущего графика без префикса биржи
 var string raw_ticker = syminfo.ticker
@@ -101,22 +101,35 @@ if ticker == "${t}"
   // Без line.new и без label.new — ничего «поверх графика» не рисуется.
   pineScript += `
 
-// ---- Серии уровней ----
+/// ---- Серии уровней (привязаны к цене) ----
 goal1_series   = goal1        > 0 ? goal1        : na
 goal2_series   = goal2        > 0 ? goal2        : na
 stop_series    = stop_level   > 0 ? stop_level   : na
 cancel_series  = cancel_level > 0 ? cancel_level : na
 entry_series   = entry_level  > 0 ? entry_level  : na
 
-// ---- Отрисовка линий, привязанных к цене ----
-// Это НЕ объекты-оверлей, а именно "ценовые" линии индикатора.
-// trackprice=true даёт плашки на правой шкале.
-// show_last=bar_index — рисовать на всей видимой истории (по умолчанию plot это и делает).
-plot(goal1_series,   title="Цель 1", color=color.red,    linewidth=2, trackprice=true)
-plot(goal2_series,   title="Цель 2", color=color.red,    linewidth=2, trackprice=true)
-plot(stop_series,    title="Стоп",   color=color.orange, linewidth=2, trackprice=true)
-plot(cancel_series,  title="Отмена", color=color.gray,   linewidth=2, trackprice=true)
-plot(entry_series,   title="Вход",   color=color.green,  linewidth=2, trackprice=true)
+// ---- Линии уровней на общей ценовой шкале ----
+plot(goal1_series,   title="Цель 1", color=color.red,    linewidth=2, style=plot.style_stepline)
+plot(goal2_series,   title="Цель 2", color=color.red,    linewidth=2, style=plot.style_dotted)
+plot(stop_series,    title="Стоп",   color=color.orange, linewidth=2, style=plot.style_solid)
+plot(cancel_series,  title="Отмена", color=color.gray,   linewidth=2, style=plot.style_dashed)
+plot(entry_series,   title="Вход",   color=color.green,  linewidth=2, style=plot.style_solid)
+
+// ---- Плашки на правой шкале (число) ----
+plot(goal1_series,  color=color.new(color.red,    100), trackprice=true,  linewidth=1, title="Цель 1 pin")
+plot(goal2_series,  color=color.new(color.red,    100), trackprice=true,  linewidth=1, title="Цель 2 pin")
+plot(stop_series,   color=color.new(color.orange, 100), trackprice=true,  linewidth=1, title="Стоп pin")
+plot(cancel_series, color=color.new(color.gray,   100), trackprice=true,  linewidth=1, title="Отмена pin")
+plot(entry_series,  color=color.new(color.green,  100), trackprice=true,  linewidth=1, title="Вход pin")
+
+// ---- Текстовые подписи "Вход/Стоп/Отмена/Цель" на последнем баре ----
+showText = input.bool(true, "Показывать текстовые лейблы у последнего бара")
+
+plotshape(showText and not na(goal1_series),   title="Цель 1 метка", text="Цель 1",   style=shape.labelleft,  location=location.absolute, color=color.red,    textcolor=color.white, size=size.tiny,   y=goal1)
+plotshape(showText and not na(goal2_series),   title="Цель 2 метка", text="Цель 2",   style=shape.labelleft,  location=location.absolute, color=color.red,    textcolor=color.white, size=size.tiny,   y=goal2)
+plotshape(showText and not na(stop_series),    title="Стоп метка",   text="Стоп",     style=shape.labelleft,  location=location.absolute, color=color.orange, textcolor=color.white, size=size.tiny,   y=stop_level)
+plotshape(showText and not na(cancel_series),  title="Отмена метка", text="Отмена",   style=shape.labelleft,  location=location.absolute, color=color.gray,   textcolor=color.white, size=size.tiny,   y=cancel_level)
+plotshape(showText and not na(entry_series),   title="Вход метка",   text="Вход",     style=shape.labelleft,  location=location.absolute, color=color.green,  textcolor=color.white, size=size.tiny,   y=entry_level)
 `;
 
   res.set('Content-Type', 'text/plain; charset=utf-8');
