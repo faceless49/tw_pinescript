@@ -100,30 +100,43 @@ if ticker == "${t}"
   // ===== Хвост Pine: ТОЛЬКО plot-линии (привязаны к цене) + плашки =====
   // Без line.new и без label.new — ничего «поверх графика» не рисуется.
   pineScript += `
-
-/// ---- Серии уровня (если значения > 0) ----
+// ---- Серии уровней (жёстко привязаны к цене) ----
 goal1_series   = goal1        > 0 ? goal1        : na
 goal2_series   = goal2        > 0 ? goal2        : na
 stop_series    = stop_level   > 0 ? stop_level   : na
 cancel_series  = cancel_level > 0 ? cancel_level : na
 entry_series   = entry_level  > 0 ? entry_level  : na
 
-// ---- ЛИНИИ, ПРИВЯЗАННЫЕ К ЦЕНЕ (никакого оверлея) ----
-// Используем корректные стили plot
-plot(goal1_series,   title="Цель 1", color=color.red,    linewidth=2, style=plot.style_line,    trackprice=true)
-plot(goal2_series,   title="Цель 2", color=color.red,    linewidth=2, style=plot.style_line,    trackprice=true)
-plot(stop_series,    title="Стоп",   color=color.orange, linewidth=2, style=plot.style_line,    trackprice=true)
-plot(cancel_series,  title="Отмена", color=color.gray,   linewidth=2, style=plot.style_line,    trackprice=true)
+// ---- ЛИНИИ уровней (НИКАКОГО overlay-объекта) ----
+plot(goal1_series,   title="Цель 1", color=color.red,    linewidth=2, style=plot.style_line,     trackprice=true)
+plot(goal2_series,   title="Цель 2", color=color.red,    linewidth=2, style=plot.style_line,     trackprice=true)
+plot(stop_series,    title="Стоп",   color=color.orange, linewidth=2, style=plot.style_line,     trackprice=true)
+plot(cancel_series,  title="Отмена", color=color.gray,   linewidth=2, style=plot.style_line,     trackprice=true)
 plot(entry_series,   title="Вход",   color=color.green,  linewidth=2, style=plot.style_stepline, trackprice=true)
 
-// ---- ТЕКСТОВЫЕ ПОДПИСИ НА ПОСЛЕДНЕМ БАРЕ ----
+// ---- Подписи у последнего бара (возвращаем лейблы) ----
 showText = input.bool(true, "Показывать подписи (Вход/Стоп/Отмена/Цели) у последнего бара")
 
-plotshape(showText and barstate.islast and not na(goal1_series),  title="Цель 1 метка", text="Цель 1",  style=shape.labelleft,  location=location.absolute, y=goal1,        color=color.red,    textcolor=color.white, size=size.tiny)
-plotshape(showText and barstate.islast and not na(goal2_series),  title="Цель 2 метка", text="Цель 2",  style=shape.labelleft,  location=location.absolute, y=goal2,        color=color.red,    textcolor=color.white, size=size.tiny)
-plotshape(showText and barstate.islast and not na(stop_series),   title="Стоп метка",   text="Стоп",    style=shape.labelleft,  location=location.absolute, y=stop_level,   color=color.orange, textcolor=color.white, size=size.tiny)
-plotshape(showText and barstate.islast and not na(cancel_series), title="Отмена метка", text="Отмена",  style=shape.labelleft,  location=location.absolute, y=cancel_level, color=color.gray,   textcolor=color.white, size=size.tiny)
-plotshape(showText and barstate.islast and not na(entry_series),  title="Вход метка",   text="Вход",    style=shape.labelleft,  location=location.absolute, y=entry_level,  color=color.green,  textcolor=color.white, size=size.tiny)
+plotshape(showText and barstate.islast and not na(goal1_series),
+     title="Цель 1 метка", text="Цель 1", style=shape.label_left,
+     location=location.absolute, y=goal1, color=color.red, textcolor=color.white, size=size.tiny)
+
+plotshape(showText and barstate.islast and not na(goal2_series),
+     title="Цель 2 метка", text="Цель 2", style=shape.label_left,
+     location=location.absolute, y=goal2, color=color.red, textcolor=color.white, size=size.tiny)
+
+plotshape(showText and barstate.islast and not na(stop_series),
+     title="Стоп метка", text="Стоп", style=shape.label_left,
+     location=location.absolute, y=stop_level, color=color.orange, textcolor=color.white, size=size.tiny)
+
+plotshape(showText and barstate.islast and not na(cancel_series),
+     title="Отмена метка", text="Отмена", style=shape.label_left,
+     location=location.absolute, y=cancel_level, color=color.gray, textcolor=color.white, size=size.tiny)
+
+plotshape(showText and barstate.islast and not na(entry_series),
+     title="Вход метка", text="Вход", style=shape.label_left,
+     location=location.absolute, y=entry_level, color=color.green, textcolor=color.white, size=size.tiny)
+
 `;
 
   res.set('Content-Type', 'text/plain; charset=utf-8');
