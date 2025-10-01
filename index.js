@@ -55,17 +55,15 @@ app.post(POST_PATHS, upload.single('file'), (req, res) => {
   let pineScript = `//@version=6
 indicator("Multi-Ticker Levels (Goals/Stop/Cancel/Entry)", overlay=true, format=format.price, scale=scale.right)
 
-// Тикер
-var string raw_ticker = syminfo.ticker
-var string ticker     = str.replace(syminfo.ticker, "MOEX:", "")
-
-// Точность для форматирования цен (опционально)
+// точность по шагу цены
 float _mt = syminfo.mintick
-int _prec = _mt > 0 ? int(math.round(math.log10(1 / _mt))) : 2
+int   _prec = _mt > 0 ? int(math.round(math.log10(1 / _mt))) : 2
 
-// ✅ Объявляем функцию на верхнем уровне, а не внутри if:
+// ✅ функция ДОЛЖНА быть объявлена на верхнем уровне:
 f_fmt(p) =>
-    str.tostring(p, _prec)
+    // собираем строковый шаблон вида "#.000"
+    string mask = _prec > 0 ? "#." + str.repeat("0", _prec) : "#"
+    str.tostring(p, mask)
 
 // Дальше ваши переменные уровней
 var float goal1        = 0.0
@@ -141,17 +139,17 @@ if barstate.islast
     if not na(lbl_entry)
         label.delete(lbl_entry), lbl_entry := na
 
-    if showText
-        if not na(goal1_series)
-            lbl_goal1  := label.new(bar_index, goal1,        "Цель 1 " + f_fmt(goal1),        style=label.style_label_left, textcolor=color.white, color=color.new(color.red,    20), size=size.tiny)
-        if not na(goal2_series)
-            lbl_goal2  := label.new(bar_index, goal2,        "Цель 2 " + f_fmt(goal2),        style=label.style_label_left, textcolor=color.white, color=color.new(color.red,    40), size=size.tiny)
-        if not na(stop_series)
-            lbl_stop   := label.new(bar_index, stop_level,   "Стоп "   + f_fmt(stop_level),    style=label.style_label_left, textcolor=color.white, color=color.new(color.orange, 20), size=size.tiny)
-        if not na(cancel_series)
-            lbl_cancel := label.new(bar_index, cancel_level, "Отмена " + f_fmt(cancel_level),  style=label.style_label_left, textcolor=color.white, color=color.new(color.gray,   20), size=size.tiny)
-        if not na(entry_series)
-            lbl_entry  := label.new(bar_index, entry_level,  "Вход "   + f_fmt(entry_level),   style=label.style_label_left, textcolor=color.white, color=color.new(color.green,  20), size=size.tiny)
+   if showText
+    if not na(goal1_series)
+        lbl_goal1  := label.new(bar_index, goal1,        "Цель 1 " + f_fmt(goal1),        style=label.style_label_left,  textcolor=color.white, color=color.new(color.red,    20), size=size.tiny)
+    if not na(goal2_series)
+        lbl_goal2  := label.new(bar_index, goal2,        "Цель 2 " + f_fmt(goal2),        style=label.style_label_left,  textcolor=color.white, color=color.new(color.red,    40), size=size.tiny)
+    if not na(stop_series)
+        lbl_stop   := label.new(bar_index, stop_level,   "Стоп "   + f_fmt(stop_level),    style=label.style_label_left,  textcolor=color.white, color=color.new(color.orange, 20), size=size.tiny)
+    if not na(cancel_series)
+        lbl_cancel := label.new(bar_index, cancel_level, "Отмена " + f_fmt(cancel_level),  style=label.style_label_left,  textcolor=color.white, color=color.new(color.gray,   20), size=size.tiny)
+    if not na(entry_series)
+        lbl_entry  := label.new(bar_index, entry_level,  "Вход "   + f_fmt(entry_level),   style=label.style_label_left,  textcolor=color.white, color=color.new(color.green,  20), size=size.tiny)
 `;
 
   res.set('Content-Type', 'text/plain; charset=utf-8');
