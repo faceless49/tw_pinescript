@@ -111,7 +111,7 @@ stop_series    = stop_level   > 0 ? stop_level   : na
 cancel_series  = cancel_level > 0 ? cancel_level : na
 entry_series   = entry_level  > 0 ? entry_level  : na
 
-// ---- ЛИНИИ уровней ----
+// ---- ЛИНИИ уровней (ценовые серии на ценовой шкале) ----
 plot(goal1_series,  title="Цель 1", color=color.red,    linewidth=2, trackprice=true)
 plot(goal2_series,  title="Цель 2", color=color.red,    linewidth=2, trackprice=true)
 plot(stop_series,   title="Стоп",   color=color.orange, linewidth=2, trackprice=true)
@@ -119,37 +119,83 @@ plot(cancel_series, title="Отмена", color=color.gray,   linewidth=2, track
 plot(entry_series,  title="Вход",   color=color.green,  linewidth=2, trackprice=true)
 
 // ---- Подписи у последнего бара ----
-showText = input.bool(true, "Показывать подписи (Вход/Стоп/Отмена/Цели) у последнего бара")
+showText = input.bool(true, "Показывать подписи у последнего бара")
 
-var label lbl_goal1   = na
-var label lbl_goal2   = na
-var label lbl_stop    = na
-var label lbl_cancel  = na
-var label lbl_entry   = na
+var label lbl_goal1  = na
+var label lbl_goal2  = na
+var label lbl_stop   = na
+var label lbl_cancel = na
+var label lbl_entry  = na
 
 if barstate.islast
+    // удаляем старые лейблы
     if not na(lbl_goal1)
-        label.delete(lbl_goal1), lbl_goal1 := na
+        label.delete(lbl_goal1)
+        lbl_goal1 := na
     if not na(lbl_goal2)
-        label.delete(lbl_goal2), lbl_goal2 := na
+        label.delete(lbl_goal2)
+        lbl_goal2 := na
     if not na(lbl_stop)
-        label.delete(lbl_stop),  lbl_stop  := na
+        label.delete(lbl_stop)
+        lbl_stop := na
     if not na(lbl_cancel)
-        label.delete(lbl_cancel),lbl_cancel:= na
+        label.delete(lbl_cancel)
+        lbl_cancel := na
     if not na(lbl_entry)
-        label.delete(lbl_entry), lbl_entry := na
+        label.delete(lbl_entry)
+        lbl_entry := na
 
-   if showText
-    if not na(goal1_series)
-        lbl_goal1  := label.new(bar_index, goal1,        "Цель 1 " + f_fmt(goal1),        style=label.style_label_left,  textcolor=color.white, color=color.new(color.red,    20), size=size.tiny)
-    if not na(goal2_series)
-        lbl_goal2  := label.new(bar_index, goal2,        "Цель 2 " + f_fmt(goal2),        style=label.style_label_left,  textcolor=color.white, color=color.new(color.red,    40), size=size.tiny)
-    if not na(stop_series)
-        lbl_stop   := label.new(bar_index, stop_level,   "Стоп "   + f_fmt(stop_level),    style=label.style_label_left,  textcolor=color.white, color=color.new(color.orange, 20), size=size.tiny)
-    if not na(cancel_series)
-        lbl_cancel := label.new(bar_index, cancel_level, "Отмена " + f_fmt(cancel_level),  style=label.style_label_left,  textcolor=color.white, color=color.new(color.gray,   20), size=size.tiny)
-    if not na(entry_series)
-        lbl_entry  := label.new(bar_index, entry_level,  "Вход "   + f_fmt(entry_level),   style=label.style_label_left,  textcolor=color.white, color=color.new(color.green,  20), size=size.tiny)
+    if showText
+        if not na(goal1_series)
+            lbl_goal1 := label.new(
+                 x=bar_index,
+                 y=goal1,
+                 text="Цель 1 " + str.tostring(goal1),
+                 style=label.style_label_left,
+                 textcolor=color.white,
+                 color=color.new(color.red, 20),
+                 size=size.tiny
+            )
+        if not na(goal2_series)
+            lbl_goal2 := label.new(
+                 x=bar_index,
+                 y=goal2,
+                 text="Цель 2 " + str.tostring(goal2),
+                 style=label.style_label_left,
+                 textcolor=color.white,
+                 color=color.new(color.red, 40),
+                 size=size.tiny
+            )
+        if not na(stop_series)
+            lbl_stop := label.new(
+                 x=bar_index,
+                 y=stop_level,
+                 text="Стоп " + str.tostring(stop_level),
+                 style=label.style_label_left,
+                 textcolor=color.white,
+                 color=color.new(color.orange, 20),
+                 size=size.tiny
+            )
+        if not na(cancel_series)
+            lbl_cancel := label.new(
+                 x=bar_index,
+                 y=cancel_level,
+                 text="Отмена " + str.tostring(cancel_level),
+                 style=label.style_label_left,
+                 textcolor=color.white,
+                 color=color.new(color.gray, 20),
+                 size=size.tiny
+            )
+        if not na(entry_series)
+            lbl_entry := label.new(
+                 x=bar_index,
+                 y=entry_level,
+                 text="Вход " + str.tostring(entry_level),
+                 style=label.style_label_left,
+                 textcolor=color.white,
+                 color=color.new(color.green, 20),
+                 size=size.tiny
+            )
 `;
 
   res.set('Content-Type', 'text/plain; charset=utf-8');
