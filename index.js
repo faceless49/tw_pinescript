@@ -51,14 +51,19 @@ app.post(POST_PATHS, upload.single('file'), (req, res) => {
     return res.status(400).send('Не удалось прочитать Excel: ' + e.message);
   }
 
-  // ===== Шапка Pine =====
-  // scale=scale.none — индикатор НЕ создаёт вторую ценовую шкалу
+  // ===== Шапка Pine: Жёсткая привязка к ЦЕНОВОЙ шкале =====
   let pineScript = `//@version=6
-indicator("Multi-Ticker Levels (Goals/Stop/Cancel/Entry)", overlay=true)
+// Форматируем как цену и используем правую ценовую шкалу графика
+indicator("Multi-Ticker Levels (Goals/Stop/Cancel/Entry)", overlay=true, format=format.price, scale=scale.right)
 
 // Тикер текущего графика без префикса биржи
 var string raw_ticker = syminfo.ticker
 var string ticker     = str.replace(syminfo.ticker, "MOEX:", "")
+
+// Точность (опционально): число знаков после запятой из syminfo.mintick
+float _mt = syminfo.mintick
+int _prec = _mt > 0 ? int(math.round(math.log10(1 / _mt))) : 2
+// применим precision к форматированию лейблов, если нужно
 
 // Уровни (series float)
 var float goal1        = 0.0
@@ -97,28 +102,25 @@ if ticker == "${t}"
       });
     });
 
-  // ===== Хвост Pine: ТОЛЬКО plot-линии (привязаны к цене) + плашки =====
-  // Без line.new и без label.new — ничего «поверх графика» не рисуется.
+  // ===== Хвост Pine: ТОЛЬКО plot-линии (ценовые серии) + подписи у последнего бара =====
   pineScript += `
-// ---- Серии уровней (жёстко привязаны к цене) ----
+// ---- Серии уровней (привязаны к цене) ----
 goal1_series   = goal1        > 0 ? goal1        : na
 goal2_series   = goal2        > 0 ? goal2        : na
 stop_series    = stop_level   > 0 ? stop_level   : na
 cancel_series  = cancel_level > 0 ? cancel_level : na
 entry_series   = entry_level  > 0 ? entry_level  : na
 
-// ---- ЛИНИИ уровней на общей ценовой шкале ----
-// ВАЖНО: это plot-серии (не оверлей-объекты), они не «плавают» при прокрутке.
-plot(goal1_series,   title="Цель 1", color=color.red,    linewidth=2, style=plot.style_line,     trackprice=true)
-plot(goal2_series,   title="Цель 2", color=color.red,    linewidth=2, style=plot.style_line,     trackprice=true)
-plot(stop_series,    title="Стоп",   color=color.orange, linewidth=2, style=plot.style_line,     trackprice=true)
-plot(cancel_series,  title="Отмена", color=color.gray,   linewidth=2, style=plot.style_line,     trackprice=true)
-plot(entry_series,   title="Вход",   color=color.green,  linewidth=2, style=plot.style_line,     trackprice=true)
+// ---- ЛИНИИ уровней (только plot, на ценовой шкале) ----
+plot(goal1_series,   title="Цель 1", color=color.red,    linewidth=2, style=plot.style_line, trackprice=true)
+plot(goal2_series,   title="Цель 2", color=color.red,    linewidth=2, style=plot.style_line, trackprice=true)
+plot(stop_series,    title="Стоп",   color=color.orange, linewidth=2, style=plot.style_line, trackprice=true)
+plot(cancel_series,  title="Отмена", color=color.gray,   linewidth=2, style=plot.style_line, trackprice=true)
+plot(entry_series,   title="Вход",   color=color.green,  linewidth=2, style=plot.style_line, trackprice=true)
 
-// ---- Текстовые подписи у последнего бара (через label.new) ----
-showText = input.bool(true, "Показывать подписи у последнего бара")
+// ---- Подписи у последнего бара (информативно, не влияет на шкалу) ----
+showText = input.bool(true, "Показывать подписи (Вход/Стоп/Отмена/Цели) у последнего бара")
 
-// держатели лейблов (чтобы не плодить при каждом тике)
 var label lbl_goal1   = na
 var label lbl_goal2   = na
 var label lbl_stop    = na
@@ -126,7 +128,6 @@ var label lbl_cancel  = na
 var label lbl_entry   = na
 
 if barstate.islast
-    // удалить предыдущие, если были
     if not na(lbl_goal1)
         label.delete(lbl_goal1), lbl_goal1 := na
     if not na(lbl_goal2)
@@ -139,16 +140,18 @@ if barstate.islast
         label.delete(lbl_entry), lbl_entry := na
 
     if showText
+        // форматируем ценник с учётом _prec (опционально)
+        f_fmt(p) => str.tostring(p, _prec)
         if not na(goal1_series)
-            lbl_goal1  := label.new(bar_index, goal1,  "Цель 1",  style=label.style_label_left,  textcolor=color.white, color=color.new(color.red,    20), size=size.tiny)
+            lbl_goal1  := label.new(bar_index, goal1,        "Цель 1 " + f_fmt(goal1), style=label.style_label_left,  textcolor=color.white, color=color.new(color.red,    20), size=size.tiny)
         if not na(goal2_series)
-            lbl_goal2  := label.new(bar_index, goal2,  "Цель 2",  style=label.style_label_left,  textcolor=color.white, color=color.new(color.red,    40), size=size.tiny)
+            lbl_goal2  := label.new(bar_index, goal2,        "Цель 2 " + f_fmt(goal2), style=label.style_label_left,  textcolor=color.white, color=color.new(color.red,    40), size=size.tiny)
         if not na(stop_series)
-            lbl_stop   := label.new(bar_index, stop_level, "Стоп",   style=label.style_label_left,  textcolor=color.white, color=color.new(color.orange, 20), size=size.tiny)
+            lbl_stop   := label.new(bar_index, stop_level,   "Стоп "   + f_fmt(stop_level), style=label.style_label_left,  textcolor=color.white, color=color.new(color.orange, 20), size=size.tiny)
         if not na(cancel_series)
-            lbl_cancel := label.new(bar_index, cancel_level,"Отмена", style=label.style_label_left,  textcolor=color.white, color=color.new(color.gray,   20), size=size.tiny)
+            lbl_cancel := label.new(bar_index, cancel_level, "Отмена " + f_fmt(cancel_level), style=label.style_label_left, textcolor=color.white, color=color.new(color.gray,   20), size=size.tiny)
         if not na(entry_series)
-            lbl_entry  := label.new(bar_index, entry_level, "Вход",  style=label.style_label_left,  textcolor=color.white, color=color.new(color.green,  20), size=size.tiny)
+            lbl_entry  := label.new(bar_index, entry_level,  "Вход "   + f_fmt(entry_level), style=label.style_label_left,  textcolor=color.white, color=color.new(color.green,  20), size=size.tiny)
 `;
 
   res.set('Content-Type', 'text/plain; charset=utf-8');
