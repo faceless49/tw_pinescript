@@ -120,35 +120,34 @@ if ticker == "${t}"
   // ===== Хвост Pine (без plot и без второй шкалы) =====
   pineScript += `
 
-// ---- Горизонтальные линии: рисуем один раз ----
+// ---- Горизонтальные лучи: рисуем один раз ----
 if barstate.islast and not is_drawn
     is_drawn := true
     if goal1 > 0
-        line.new(bar_index[200], goal1, bar_index, goal1, extend=extend.right, color=color.red, style=line.style_solid, width=2)
+        line.new(bar_index[200], goal1, bar_index, goal1, extend=extend.right, color=color.red,   style=line.style_solid,  width=2)
     if goal2 > 0
-        line.new(bar_index[200], goal2, bar_index, goal2, extend=extend.right, color=color.red, style=line.style_dotted, width=2)
+        line.new(bar_index[200], goal2, bar_index, goal2, extend=extend.right, color=color.red,   style=line.style_dotted, width=2)
     if stop_level > 0
-        line.new(bar_index[200], stop_level, bar_index, stop_level, extend=extend.right, color=color.orange, style=line.style_solid, width=2)
+        line.new(bar_index[200], stop_level, bar_index, stop_level, extend=extend.right, color=color.orange, style=line.style_solid,  width=2)
     if cancel_level > 0
-        line.new(bar_index[200], cancel_level, bar_index, cancel_level, extend=extend.right, color=color.gray, style=line.style_dashed, width=2)
+        line.new(bar_index[200], cancel_level, bar_index, cancel_level, extend=extend.right, color=color.gray,   style=line.style_dashed, width=2)
     if entry_level > 0
-        line.new(bar_index[200], entry_level, bar_index, entry_level, extend=extend.right, color=color.green, style=line.style_solid, width=2)
+        line.new(bar_index[200], entry_level, bar_index, entry_level, extend=extend.right, color=color.green,  style=line.style_solid,  width=2)
 
-
-// ---- ПРАЙС-ПЛАШКИ НА ПРАВОЙ ШКАЛЕ БЕЗ ВТОРОЙ ШКАЛЫ ----
-// Серии уровня (na если нет)
+// ---- Плашки на правой шкале (без второй шкалы и без лейблов) ----
+// Делаем серии только на последнем баре — график не «мазюкится», но плашка есть.
 goal1_series   = goal1        > 0 ? goal1        : na
 goal2_series   = goal2        > 0 ? goal2        : na
 stop_series    = stop_level   > 0 ? stop_level   : na
 cancel_series  = cancel_level > 0 ? cancel_level : na
 entry_series   = entry_level  > 0 ? entry_level  : na
 
-// Прозрачные plot'ы: линия невидима, но плашка на шкале есть
-plot(goal1_series,   title="Цель 1", color=color.new(color.red,    100), linewidth=1, style=plot.style_linebr, trackprice=true, show_last=1)
-plot(goal2_series,   title="Цель 2", color=color.new(color.red,    100), linewidth=1, style=plot.style_linebr, trackprice=true, show_last=1)
-plot(stop_series,    title="Стоп",   color=color.new(color.orange, 100), linewidth=1, style=plot.style_linebr, trackprice=true, show_last=1)
-plot(cancel_series,  title="Отмена", color=color.new(color.gray,   100), linewidth=1, style=plot.style_linebr, trackprice=true, show_last=1)
-plot(entry_series,   title="Вход",   color=color.new(color.green,  100), linewidth=1, style=plot.style_linebr, trackprice=true, show_last=1)
+// ВАЖНО: индикатор объявлен с scale=scale.none, поэтому вторая шкала не появится.
+plot(goal1_series,   title="Цель 1", color=color.red,    linewidth=1, style=plot.style_linebr, trackprice=true, show_last=1)
+plot(goal2_series,   title="Цель 2", color=color.red,    linewidth=1, style=plot.style_linebr, trackprice=true, show_last=1)
+plot(stop_series,    title="Стоп",   color=color.orange, linewidth=1, style=plot.style_linebr, trackprice=true, show_last=1)
+plot(cancel_series,  title="Отмена", color=color.gray,   linewidth=1, style=plot.style_linebr, trackprice=true, show_last=1)
+plot(entry_series,   title="Вход",   color=color.green,  linewidth=1, style=plot.style_linebr, trackprice=true, show_last=1)
 
 // ---- Опциональные лейблы у правого края (не создают шкалу) ----
 futureMs = int(timeframe.in_seconds()) * 1000 * labelsOffsetBars
