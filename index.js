@@ -107,17 +107,18 @@ stop_series    = stop_level   > 0 ? stop_level   : na
 cancel_series  = cancel_level > 0 ? cancel_level : na
 entry_series   = entry_level  > 0 ? entry_level  : na
 
-// ---- ЛИНИИ уровней на общей ценовой шкале (никакого overlay-объекта) ----
+// ---- ЛИНИИ уровней на общей ценовой шкале ----
+// ВАЖНО: это plot-серии (не оверлей-объекты), они не «плавают» при прокрутке.
 plot(goal1_series,   title="Цель 1", color=color.red,    linewidth=2, style=plot.style_line,     trackprice=true)
 plot(goal2_series,   title="Цель 2", color=color.red,    linewidth=2, style=plot.style_line,     trackprice=true)
 plot(stop_series,    title="Стоп",   color=color.orange, linewidth=2, style=plot.style_line,     trackprice=true)
 plot(cancel_series,  title="Отмена", color=color.gray,   linewidth=2, style=plot.style_line,     trackprice=true)
-plot(entry_series,   title="Вход",   color=color.green,  linewidth=2, style=plot.style_stepline, trackprice=true)
+plot(entry_series,   title="Вход",   color=color.green,  linewidth=2, style=plot.style_line,     trackprice=true)
 
-// ---- Текстовые подписи у последнего бара (через label.new, без shape) ----
-showText = input.bool(true, "Показывать подписи (Вход/Стоп/Отмена/Цели) у последнего бара")
+// ---- Текстовые подписи у последнего бара (через label.new) ----
+showText = input.bool(true, "Показывать подписи у последнего бара")
 
-// держатели лейблов
+// держатели лейблов (чтобы не плодить при каждом тике)
 var label lbl_goal1   = na
 var label lbl_goal2   = na
 var label lbl_stop    = na
@@ -125,7 +126,7 @@ var label lbl_cancel  = na
 var label lbl_entry   = na
 
 if barstate.islast
-    // почистить предыдущие
+    // удалить предыдущие, если были
     if not na(lbl_goal1)
         label.delete(lbl_goal1), lbl_goal1 := na
     if not na(lbl_goal2)
