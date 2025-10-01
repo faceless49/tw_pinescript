@@ -25,7 +25,7 @@ function mapExcelTickerToPine(excelTicker) {
   return map[excelTicker] ?? excelTicker;
 }
 
-// ===== Простая форма (GET) на всех ожидаемых путях =====
+// ===== Простая форма (GET) =====
 const GET_PATHS = ['/', '/generate-pine-script', '/api/generate-pine-script'];
 app.get(GET_PATHS, (_req, res) => {
   res.set('Content-Type', 'text/html; charset=utf-8');
@@ -39,7 +39,7 @@ app.get(GET_PATHS, (_req, res) => {
   `);
 });
 
-// ===== Основной обработчик (POST) на всех ожидаемых путях =====
+// ===== Основной обработчик (POST) =====
 const POST_PATHS = ['/', '/generate-pine-script', '/api/generate-pine-script'];
 app.post(POST_PATHS, upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).send('Файл не загружен (ожидаю поле "file").');
@@ -53,20 +53,24 @@ app.post(POST_PATHS, upload.single('file'), (req, res) => {
 
   // ===== Шапка Pine =====
   let pineScript = `//@version=6
-indicator("Multi-Ticker Levels (Goals/Stop/Cancel/Entry)", overlay=true, scale=scale.right)
+indicator("Multi-Ticker Levels (Goals/Stop/Cancel/Entry)", overlay=true, scale=scale.none)
 
+// Тикер текущего графика без префикса биржи
 var string raw_ticker = syminfo.ticker
 var string ticker     = str.replace(syminfo.ticker, "MOEX:", "")
 
+// Уровни
 var float goal1        = 0.0
 var float goal2        = 0.0
 var float stop_level   = 0.0
 var float cancel_level = 0.0
 var float entry_level  = 0.0
 
+// Флаг одноразовой отрисовки линий
 var bool is_drawn = false
 
-showInlineLabels   = input.bool(false, "Показывать лейблы на графике (в дополнение к подписи на шкале)")
+// Настройки лейблов (не создают шкалу)
+showInlineLabels   = input.bool(false, "Показывать лейблы на графике")
 labelsOffsetBars   = input.int(15, "Смещение лейблов вправо (в барах)", minval=0, maxval=500)
 labelsSizeStr      = input.string("large", "Размер лейблов", options=["tiny","small","normal","large","huge"])
 
@@ -76,6 +80,7 @@ label_size := labelsSizeStr == "tiny"   ? size.tiny   :
               labelsSizeStr == "normal" ? size.normal :
               labelsSizeStr == "large"  ? size.large  : size.huge
 
+// Держатели лейблов
 var label lbl_goal1   = na
 var label lbl_goal2   = na
 var label lbl_stop    = na
@@ -112,9 +117,10 @@ if ticker == "${t}"
       });
     });
 
-  // ===== Хвост Pine =====
+  // ===== Хвост Pine (без plot и без второй шкалы) =====
   pineScript += `
 
+// ---- Горизонтальные линии: рисуем один раз ----
 if barstate.islast and not is_drawn
     is_drawn := true
     if goal1 > 0
@@ -128,22 +134,13 @@ if barstate.islast and not is_drawn
     if entry_level > 0
         line.new(bar_index[200], entry_level, bar_index, entry_level, extend=extend.right, color=color.green, style=line.style_solid, width=2)
 
-goal1_series   = goal1        > 0 ? goal1        : na
-goal2_series   = goal2        > 0 ? goal2        : na
-stop_series    = stop_level   > 0 ? stop_level   : na
-cancel_series  = cancel_level > 0 ? cancel_level : na
-entry_series   = entry_level  > 0 ? entry_level  : na
-
-plot(goal1_series,   title="Цель 1", color=color.red,    linewidth=2, style=plot.style_linebr, trackprice=true, show_last=1)
-plot(goal2_series,   title="Цель 2", color=color.red,    linewidth=2, style=plot.style_linebr, trackprice=true, show_last=1)
-plot(stop_series,    title="Стоп",   color=color.orange, linewidth=2, style=plot.style_linebr, trackprice=true, show_last=1)
-plot(cancel_series,  title="Отмена", color=color.gray,   linewidth=2, style=plot.style_linebr, trackprice=true, show_last=1)
-plot(entry_series,   title="Вход",   color=color.green,  linewidth=2, style=plot.style_linebr, trackprice=true, show_last=1)
-
+// ---- Опциональные лейблы у правого края (не создают шкалу) ----
 futureMs = int(timeframe.in_seconds()) * 1000 * labelsOffsetBars
 xRight   = timenow + futureMs
 
+// Перерисовываем лейблы на каждом баре, чтобы они «держались» правого края
 if true
+    // Удаляем предыдущие
     if not na(lbl_goal1)
         label.delete(lbl_goal1)
         lbl_goal1 := na
@@ -161,45 +158,45 @@ if true
         lbl_entry := na
 
     if showInlineLabels
-        if not na(goal1_series)
+        if goal1 > 0
             lbl_goal1 := label.new(x=xRight, y=goal1, xloc=xloc.bar_time, style=label.style_label_right, text="Цель 1", color=color.new(color.red, 20), textcolor=color.white, size=label_size)
-        if not na(goal2_series)
+        if goal2 > 0
             lbl_goal2 := label.new(x=xRight, y=goal2, xloc=xloc.bar_time, style=label.style_label_right, text="Цель 2", color=color.new(color.red, 40), textcolor=color.white, size=label_size)
-        if not na(stop_series)
+        if stop_level > 0
             lbl_stop  := label.new(x=xRight, y=stop_level, xloc=xloc.bar_time, style=label.style_label_right, text="Стоп", color=color.new(color.orange, 20), textcolor=color.white, size=label_size)
-        if not na(cancel_series)
+        if cancel_level > 0
             lbl_cancel := label.new(x=xRight, y=cancel_level, xloc=xloc.bar_time, style=label.style_label_right, text="Отмена", color=color.new(color.gray, 20), textcolor=color.white, size=label_size)
-        if not na(entry_series)
+        if entry_level > 0
             lbl_entry := label.new(x=xRight, y=entry_level, xloc=xloc.bar_time, style=label.style_label_right, text="Вход", color=color.new(color.green, 20), textcolor=color.white, size=label_size)
 
+// ---- Алерты (опционально, не влияют на шкалы) ----
 crossUp(src, level)   => ta.crossover(src, level)
 crossDown(src, level) => ta.crossunder(src, level)
 
-entry_cross_up   = not na(entry_series)  and crossUp(close, entry_level)
-entry_cross_down = not na(entry_series)  and crossDown(close, entry_level)
+entry_cross_up   = (entry_level  > 0) and crossUp(close, entry_level)
+entry_cross_down = (entry_level  > 0) and crossDown(close, entry_level)
 alertcondition(entry_cross_up,   "Entry Cross Up",   "Цена пересекла Вход снизу вверх")
 alertcondition(entry_cross_down, "Entry Cross Down", "Цена пересекла Вход сверху вниз")
 
-stop_hit        = not na(stop_series)    and close <= stop_level
-cancel_hit_down = not na(cancel_series)  and close <= cancel_level
-cancel_hit_up   = not na(cancel_series)  and close >= cancel_level
+stop_hit        = (stop_level   > 0) and close <= stop_level
+cancel_hit_down = (cancel_level > 0) and close <= cancel_level
+cancel_hit_up   = (cancel_level > 0) and close >= cancel_level
 
 alertcondition(stop_hit,        "Stop Hit",    "Цена <= Стоп")
 alertcondition(cancel_hit_down, "Cancel Down", "Цена <= Отмена")
 alertcondition(cancel_hit_up,   "Cancel Up",   "Цена >= Отмена")
 
-goal1_reached = not na(goal1_series) and close >= goal1
-goal2_reached = not na(goal2_series) and close >= goal2
+goal1_reached = (goal1 > 0) and close >= goal1
+goal2_reached = (goal2 > 0) and close >= goal2
 
 alertcondition(goal1_reached, "Goal 1 Reached", "Цена достигла Цель 1")
 alertcondition(goal2_reached, "Goal 2 Reached", "Цена достигла Цель 2")
 `;
 
   res.set('Content-Type', 'text/plain; charset=utf-8');
-  // СКАЧИВАНИЕ, если заходят не через JS:
   res.set('Content-Disposition', 'attachment; filename="generated_pine_script.txt"');
   return res.status(200).send(pineScript);
 });
 
-// ===== Экспорт для Vercel (без app.listen) =====
+// ===== Экспорт для Vercel =====
 module.exports = (req, res) => app(req, res);
