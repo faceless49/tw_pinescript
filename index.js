@@ -53,19 +53,12 @@ app.post(POST_PATHS, upload.single('file'), (req, res) => {
 
   // ===== Шапка Pine: Жёсткая привязка к ЦЕНОВОЙ шкале =====
   let pineScript = `//@version=6
-indicator("Multi-Ticker Levels (Goals/Stop/Cancel/Entry)", overlay=true, format=format.price, scale=scale.right)
+indicator("Excel Levels — Goals / Stop / Cancel / Entry", overlay=true, format=format.price, scale=scale.right)
 
-// точность по шагу цены
-float _mt = syminfo.mintick
-int   _prec = _mt > 0 ? int(math.round(math.log10(1 / _mt))) : 2
+// === Тикер без префикса MOEX: ===
+var string TICKER = str.replace(syminfo.ticker, "MOEX:", "")
 
-// ✅ функция ДОЛЖНА быть объявлена на верхнем уровне:
-f_fmt(p) =>
-    // собираем строковый шаблон вида "#.000"
-    string mask = _prec > 0 ? "#." + str.repeat("0", _prec) : "#"
-    str.tostring(p, mask)
-
-// Дальше ваши переменные уровней
+// === Уровни (series, заполняются по тикеру) ===
 var float goal1        = 0.0
 var float goal2        = 0.0
 var float stop_level   = 0.0
@@ -103,99 +96,112 @@ if ticker == "${t}"
     });
 
   // ===== Хвост Pine: ТОЛЬКО plot-линии (ценовые серии) + подписи у последнего бара =====
-  pineScript += `
-// ---- Серии уровней (привязаны к цене) ----
-goal1_series   = goal1        > 0 ? goal1        : na
-goal2_series   = goal2        > 0 ? goal2        : na
-stop_series    = stop_level   > 0 ? stop_level   : na
-cancel_series  = cancel_level > 0 ? cancel_level : na
-entry_series   = entry_level  > 0 ? entry_level  : na
+  pineScript += `// <= 0 не рисуем
+goal1_series  = goal1        > 0 ? goal1        : na
+goal2_series  = goal2        > 0 ? goal2        : na
+stop_series   = stop_level   > 0 ? stop_level   : na
+cancel_series = cancel_level > 0 ? cancel_level : na
+entry_series  = entry_level  > 0 ? entry_level  : na
 
-// ---- ЛИНИИ уровней (ценовые серии на ценовой шкале) ----
-plot(goal1_series,  title="Цель 1", color=color.red,    linewidth=2, trackprice=true)
-plot(goal2_series,  title="Цель 2", color=color.red,    linewidth=2, trackprice=true)
-plot(stop_series,   title="Стоп",   color=color.orange, linewidth=2, trackprice=true)
-plot(cancel_series, title="Отмена", color=color.gray,   linewidth=2, trackprice=true)
-plot(entry_series,  title="Вход",   color=color.green,  linewidth=2, trackprice=true)
 
-// ---- Подписи у последнего бара ----
-showText = input.bool(true, "Показывать подписи у последнего бара")
+// Цвета линий (по типам)
+colGoal_line   = input.color(color.red,    "Цвет линии: Цель")
+colStop_line   = input.color(color.orange, "Цвет линии: Стоп")
+colCancel_line = input.color(color.gray,   "Цвет линии: Отмена")
+colEntry_line  = input.color(color.green,  "Цвет линии: Вход")
 
-var label lbl_goal1  = na
-var label lbl_goal2  = na
-var label lbl_stop   = na
-var label lbl_cancel = na
-var label lbl_entry  = na
+// Прозрачность линий (0 = непрозрачно, 100 = полностью прозрачно)
+lineTransp     = input.int(0, "Прозрачность линий (0-100)", minval=0, maxval=100)
+
+// === Параметры линий ===
+lineWidth = input.int(2, "Толщина линий", minval=1, maxval=6)
+colGoal_lblBG   = input.color(color.red,    "Цвет фона лейбла: Цель")
+colStop_lblBG   = input.color(color.orange, "Цвет фона лейбла: Стоп")
+colCancel_lblBG = input.color(color.gray,   "Цвет фона лейбла: Отмена")
+colEntry_lblBG  = input.color(color.green,  "Цвет фона лейбла: Вход")
+
+// Прозрачность фона лейблов
+labelTransp     = input.int(20, "Прозрачность фона лейбла (0-100)", minval=0, maxval=100)
+
+// Цвет текста лейблов (общий)
+labelTextColor  = input.color(color.white, "Цвет текста лейблов")
+
+// === Хэндлы линий (храним один раз) ===
+var line ln_goal1   = na
+var line ln_goal2   = na
+var line ln_stop    = na
+var line ln_cancel  = na
+var line ln_entry   = na
+
+// Создаёт/обновляет/удаляет горизонтальную линию уровня и ВСЕГДА продлевает вправо
+f_upsert_hline(line h, float lvl, color col, int width, int transp) =>
+    line _h = h
+    if na(lvl)
+        if not na(_h)
+            line.delete(_h)
+        na
+    else
+        // скорректированный цвет с прозрачностью
+        c = color.new(col, transp)
+        if na(_h)
+            // создаём отрезок и сразу тянем вправо
+            _h := line.new(bar_index, lvl, bar_index, lvl, extend=extend.right)
+        // на каждом баре фиксируем координаты и продление вправо
+        line.set_xy1(_h, bar_index - 1, lvl)
+        line.set_xy2(_h, bar_index,     lvl)
+        line.set_extend(_h, extend.right)
+        line.set_color(_h, c)
+        line.set_width(_h, width)
+        line.set_style(_h, line.style_solid)
+        _h
+
+// Обновляем линии каждый бар (они тянутся вправо до конца графика)
+ln_goal1  := f_upsert_hline(ln_goal1,  goal1_series,  colGoal_line,   lineWidth, lineTransp)
+ln_goal2  := f_upsert_hline(ln_goal2,  goal2_series,  colGoal_line,   lineWidth, lineTransp)
+ln_stop   := f_upsert_hline(ln_stop,   stop_series,   colStop_line,   lineWidth, lineTransp)
+ln_cancel := f_upsert_hline(ln_cancel, cancel_series, colCancel_line, lineWidth, lineTransp)
+ln_entry  := f_upsert_hline(ln_entry,  entry_series,  colEntry_line,  lineWidth, lineTransp)
+
+// === Лейблы у последнего бара (жёстко по цене) ===
+showText      = input.bool(true,  "Показывать подписи у последнего бара")
+labelsSizeStr = input.string("large", "Размер лейблов", options=["tiny","small","normal","large","huge"])
+label_size = labelsSizeStr == "tiny" ? size.tiny : labelsSizeStr == "small" ? size.small : labelsSizeStr == "normal" ? size.normal : labelsSizeStr == "large" ? size.large : size.huge
+
+var label l_goal1  = na
+var label l_goal2  = na
+var label l_stop   = na
+var label l_cancel = na
+var label l_entry  = na
 
 if barstate.islast
-    // удаляем старые лейблы
-    if not na(lbl_goal1)
-        label.delete(lbl_goal1)
-        lbl_goal1 := na
-    if not na(lbl_goal2)
-        label.delete(lbl_goal2)
-        lbl_goal2 := na
-    if not na(lbl_stop)
-        label.delete(lbl_stop)
-        lbl_stop := na
-    if not na(lbl_cancel)
-        label.delete(lbl_cancel)
-        lbl_cancel := na
-    if not na(lbl_entry)
-        label.delete(lbl_entry)
-        lbl_entry := na
+    // чистим старые
+    if not na(l_goal1)
+        label.delete(l_goal1)
+        l_goal1 := na
+    if not na(l_goal2)
+        label.delete(l_goal2)
+        l_goal2 := na
+    if not na(l_stop)
+        label.delete(l_stop)
+        l_stop := na
+    if not na(l_cancel)
+        label.delete(l_cancel)
+        l_cancel := na
+    if not na(l_entry)
+        label.delete(l_entry)
+        l_entry := na
 
     if showText
         if not na(goal1_series)
-            lbl_goal1 := label.new(
-                 x=bar_index,
-                 y=goal1,
-                 text="Цель 1 " + str.tostring(goal1),
-                 style=label.style_label_left,
-                 textcolor=color.white,
-                 color=color.new(color.red, 20),
-                 size=size.tiny
-            )
+            l_goal1 := label.new(bar_index, goal1_series, "Цель 1 " + str.tostring(goal1_series), xloc.bar_index, yloc.price, color.new(colGoal_lblBG,   labelTransp), label.style_label_right, labelTextColor, label_size)
         if not na(goal2_series)
-            lbl_goal2 := label.new(
-                 x=bar_index,
-                 y=goal2,
-                 text="Цель 2 " + str.tostring(goal2),
-                 style=label.style_label_left,
-                 textcolor=color.white,
-                 color=color.new(color.red, 40),
-                 size=size.tiny
-            )
+            l_goal2 := label.new(bar_index, goal2_series, "Цель 2 " + str.tostring(goal2_series), xloc.bar_index, yloc.price, color.new(colGoal_lblBG,   math.min(100, labelTransp + 20)), label.style_label_left, labelTextColor, label_size)
         if not na(stop_series)
-            lbl_stop := label.new(
-                 x=bar_index,
-                 y=stop_level,
-                 text="Стоп " + str.tostring(stop_level),
-                 style=label.style_label_left,
-                 textcolor=color.white,
-                 color=color.new(color.orange, 20),
-                 size=size.tiny
-            )
+            l_stop  := label.new(bar_index, stop_series,  "Стоп "   + str.tostring(stop_series),  xloc.bar_index, yloc.price, color.new(colStop_lblBG,   labelTransp), label.style_label_left, labelTextColor, label_size)
         if not na(cancel_series)
-            lbl_cancel := label.new(
-                 x=bar_index,
-                 y=cancel_level,
-                 text="Отмена " + str.tostring(cancel_level),
-                 style=label.style_label_left,
-                 textcolor=color.white,
-                 color=color.new(color.gray, 20),
-                 size=size.tiny
-            )
+            l_cancel:= label.new(bar_index, cancel_series,"Отмена " + str.tostring(cancel_series), xloc.bar_index, yloc.price, color.new(colCancel_lblBG, labelTransp), label.style_label_left, labelTextColor, label_size)
         if not na(entry_series)
-            lbl_entry := label.new(
-                 x=bar_index,
-                 y=entry_level,
-                 text="Вход " + str.tostring(entry_level),
-                 style=label.style_label_left,
-                 textcolor=color.white,
-                 color=color.new(color.green, 20),
-                 size=size.tiny
-            )
+            l_entry := label.new(bar_index, entry_series, "Вход "   + str.tostring(entry_series),  xloc.bar_index, yloc.price, color.new(colEntry_lblBG,  labelTransp), label.style_label_left, labelTextColor, label_size)
 `;
 
   res.set('Content-Type', 'text/plain; charset=utf-8');
