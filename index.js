@@ -56,7 +56,7 @@ app.post(POST_PATHS, upload.single('file'), (req, res) => {
 indicator("Excel Levels — Goals / Stop / Cancel / Entry", overlay=true, format=format.price, scale=scale.right)
 
 // === Тикер без префикса MOEX: ===
-var string TICKER = str.replace(syminfo.ticker, "MOEX:", "")
+var string ticker = str.replace(syminfo.ticker, "MOEX:", "")
 
 // === Уровни (series, заполняются по тикеру) ===
 var float goal1        = 0.0
